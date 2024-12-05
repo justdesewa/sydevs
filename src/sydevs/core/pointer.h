@@ -2,7 +2,6 @@
 #ifndef SYDEVS_POINTER_H_
 #define SYDEVS_POINTER_H_
 
-#include <sydevs/core/number_types.h>
 #include <memory>
 
 namespace sydevs {
