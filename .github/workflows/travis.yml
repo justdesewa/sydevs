@@ -30,7 +30,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y doxygen graphviz g++-7 libc++-dev clang-4.0
+        sudo apt install -y doxygen graphviz g++-10 libc++-dev clang-12.0
 
     - name: Set up environment
       run: |
