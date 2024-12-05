@@ -11,14 +11,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
         cc: [gcc-7, clang-4.0]
-
-    env:
-      DOCUMENTATION: ${{ matrix.os == 'ubuntu-latest' && matrix.cc == 'gcc-7' && 'true' || 'false' }}
 
     steps:
     - name: Checkout repository
@@ -36,41 +33,4 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y doxygen graphviz g++-7 libc++-dev clang-4.0
-
-    - name: Set up environment
-      run: |
-        mkdir build
-        cd build
-        cmake ..
-
-    - name: Build project
-      run: |
-        if [[ "${DOCUMENTATION}" == "true" ]]; then
-          cd .. && 
-          (cat doxygen.config; echo "PROJECT_NUMBER=${GITHUB_REF##*/}") | doxygen -
-        else
-          make
-        fi
-
-    - name: Archive and deploy documentation or build artifacts
-      run: |
-        if [[ "${DOCUMENTATION}" == "true" ]]; then
-          zip -r SyDEVS-${GITHUB_REF##*/}_api-reference.zip doc/html
-        else
-          mkdir -p ${GITHUB_REF##/}/lib ${GITHUB_REF##/}/include
-          cp src/sydevs/core/.h ${GITHUB_REF##/}/include/sydevs/core
-          cp src/sydevs/systems/.h ${GITHUB_REF##/}/include/sydevs/systems
-          cp src/sydevs/time/.h ${GITHUB_REF##/}/include/sydevs/time
-          cp LICENSE.md ${GITHUB_REF##*/} &&
-          zip -r SyDEVS-${GITHUB_REF##/}${{ runner.os }}${{ matrix.cc }}.zip ${GITHUB_REF##/}
-        fi
-
-    - name: Deploy release
-      if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-      run: |
-        curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-        -H "Accept: application/vnd.github.v3+json" \
-        -X POST \
-        -d '{"tag_name": "${GITHUB_REF##/}", "name": "${GITHUB_REF##/}", "body": "Release description", "draft": false, "prerelease": false}' \
-        https://api.github.com/repos/${{ github.repository }}/releases
+        sudo apt install -y doxygen graphviz g++-7 …
