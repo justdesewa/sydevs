@@ -1,0 +1,61 @@
+name: Build and Deploy
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Test on Ubuntu
+
+    strategy:
+      matrix:
+        cc: [gcc-10, clang-13]  # Using a more recent version of gcc and clang
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up CMake
+      run: |
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          mkdir cmake-download && cd cmake-download &&
+          curl -O https://cmake.org/files/v3.10/cmake-3.10.0-rc5-Linux-x86_64.sh &&
+          bash cmake-3.10.0-rc5-Linux-x86_64.sh --skip-license &&
+          cd ..
+        fi
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y software-properties-common
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt update
+        sudo apt install -y g++-10
+        sudo apt install -y clang-13 libc++-dev doxygen graphviz
+
+    - name: Set environment for CMake
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+
+    - name: Build project
+      run: |
+        if [[ "${DOCUMENTATION}" == "true" ]]; then
+          cd .. && 
+          (cat doxygen.config; echo "PROJECT_NUMBER=${GITHUB_REF##*/}") | doxygen -
+        else
+          make
+        fi
+
+    - name: Archive and deploy
+      run: |
+        mkdir -p ${GITHUB_REF##/}/lib ${GITHUB_REF##/}/include
+        cp src/sydevs/core/.h ${GITHUB_REF##/}/include/sydevs/core
+        cp src/sydevs/systems/.h ${GITHUB_REF##/}/include/sydevs/systems
+        cp src/sydevs/time/.h ${GITHUB_REF##/}/include/sydevs/time
+        cp LICENSE.md ${GITHUB_REF##*/} &&
+        zip -r SyDEVS-${GITHUB_REF##/}${{ runner.os }}${{ matrix.cc }}.zip ${GITHUB_REF##/}
