@@ -44,7 +44,7 @@ jobs:
 
     - name: Build project
       run: |
-        if [[ "${DOCUMENTATION}" == "true" ]]; then
+        if [[ "${DOCUMENTATION}" == "false" ]]; then
           cd .. && 
           (cat doxygen.config; echo "PROJECT_NUMBER=${GITHUB_REF##*/}") | doxygen -
         else
