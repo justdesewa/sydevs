@@ -41,6 +41,7 @@ jobs:
         mkdir build
         cd build
         cmake ..
+        cd /home/runner/work/sydevs/sydevs/build
 
     - name: Build project
       run: |
