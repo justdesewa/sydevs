@@ -44,18 +44,16 @@ jobs:
 
     - name: Build project
       run: |
-        script:
-          - |
-            if [[ "${DOCUMENTATION}" == "true" ]]; then
-              cd .. &&
-              (cat doxygen.config; echo "PROJECT_NUMBER=${GITHUB_REF##*/}") | doxygen -
-            else
-              # Make sure you are in the correct directory where the Makefile exists
-              mkdir build
-              cd build
-              cmake ..
-              make
-            fi
+        if [[ "${DOCUMENTATION}" == "true" ]]; then
+          cd .. &&
+          (cat doxygen.config; echo "PROJECT_NUMBER=${GITHUB_REF##*/}") | doxygen -
+        else
+          # Make sure you are in the correct directory where the Makefile exists
+          mkdir build
+          cd build
+          cmake ..
+          make
+        fi
 
     - name: Archive and deploy
       run: |
