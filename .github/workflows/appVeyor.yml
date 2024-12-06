@@ -1,51 +1,75 @@
-version: '1.0.{build}'
+name: Build and Deploy SyDEVS
 
-environment:
-  matrix:
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MY_VS_VERSION: Visual Studio 14 2015 Win64
-      MY_VS_SHORT: VS2015
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MY_VS_VERSION: Visual Studio 15 2017 Win64
-      MY_VS_SHORT: VS2017
+on:
+  push:
+    branches-ignore:
+      - gh-pages
+  pull_request:
 
-branches:
-  except:
-    - gh-pages
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest]
+        vs-version: ["Visual Studio 2015", "Visual Studio 2017"]
+        vs-short: [VS2015, VS2017]
+        configuration: [Release, Debug]
 
-platform:
-  - x64
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v3
 
-configuration:
-  - Release
-  - Debug
+  - name: Set up Visual Studio
+    uses: ilammy/msvc-dev-cmd@v1
+    with:
+      arch: x64
+      msvc-version: ${{ matrix.vs-version }}
 
-before_build:
-  - cmake -G "%MY_VS_VERSION%" .
+  - name: Configure with CMake
+    run: |
+      cmake -G "${{ matrix.vs-version }} Win64" .
 
-build:
-  project: $(APPVEYOR_BUILD_FOLDER)\SyDEVS.sln     # path to Visual Studio solution or project
-  parallel: true                                   # enable MSBuild parallel builds
-  verbosity: normal                                # MSBuild verbosity level {quiet|minimal|normal|detailed}
+  - name: Build the solution
+    run: |
+      cmake --build . --config ${{ matrix.configuration }} --parallel
+       - name: Prepare artifacts
+      run: |
+        cd $GITHUB_WORKSPACE
+        mkdir -p artifacts/lib artifacts/include/sydevs/core artifacts/include/sydevs/systems artifacts/include/sydevs/time
+        cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
+        cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
+        cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
+        cp build/${{ matrix.configuration }}/* artifacts/lib
+        cp LICENSE.md artifacts
+  - name: Create zip archive
+    run: |
+        cd artifacts
+        zip -r SyDEVS-${{ github.sha }}${{ matrix.vs-short }}${{ matrix.configuration }}.zip .
 
-after_build:
-  - cd c:\projects\sydevs
-  - if "%APPVEYOR_REPO_TAG%"=="true" (set CONTENT_NAME=sydevs-%APPVEYOR_REPO_TAG_NAME%) else (set CONTENT_NAME=sydevs-%APPVEYOR_REPO_COMMIT%)
-  - mkdir %CONTENT_NAME% %CONTENT_NAME%\lib %CONTENT_NAME%\include %CONTENT_NAME%\include\sydevs %CONTENT_NAME%\include\sydevs\systems %CONTENT_NAME%\include\sydevs\time %CONTENT_NAME%\include\sydevs\core
-  - copy src\sydevs\core\*.h %CONTENT_NAME%\include\sydevs\core
-  - copy src\sydevs\systems\*.h %CONTENT_NAME%\include\sydevs\systems
-  - copy src\sydevs\time\*.h %CONTENT_NAME%\include\sydevs\time
-  - copy %APPVEYOR_BUILD_FOLDER%\%CONFIGURATION%\SyDEVS*.* %CONTENT_NAME%\lib
-  - copy LICENSE.md %CONTENT_NAME%
-  - if "%APPVEYOR_REPO_TAG%"=="true" (set ARCHIVE_NAME=SyDEVS-%APPVEYOR_REPO_TAG_NAME%Win64%MY_VS_SHORT%%CONFIGURATION%) else (set ARCHIVE_NAME=SyDEVS-%APPVEYOR_REPO_COMMIT%_Win64%MY_VS_SHORT%_%CONFIGURATION%)
-  - 7z a %ARCHIVE_NAME%.zip %CONTENT_NAME%
-  - appveyor PushArtifact %ARCHIVE_NAME%.zip
+  - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
+        path: artifacts/*.zip
+
+
+
 
 deploy:
-  - provider: Environment
-    name: SyDEVS-Releases
-    artifact: $(ARCHIVE_NAME).zip
-    force_update: true
-    on:
-      condition: $APPVEYOR_REPO_TAG  # This condition ensures deployment happens only on tags
-      appveyor_repo_tag: true
+  needs: build
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/tags'
+
+  steps:
+  - name: Download artifact
+    uses: actions/download-artifact@v3
+    with:
+      name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
+
+  - name: Deploy artifact
+    env:
+      SYDEVS_ENV: ${{ secrets.SYDEVS_ENV }}
+    run: |
+      echo "Deploying artifact to SyDEVS-Releases..."
+      # Add deployment logic here
