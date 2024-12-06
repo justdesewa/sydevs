@@ -2,6 +2,8 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
+    tags:
+      - 'v1.*' # Trigger on version tag pushes
   pull_request:
     branches:
       - main # Trigger on PR to main branch
@@ -21,14 +23,12 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3  # Latest version
 
     - name: Set up Visual Studio (Windows only)
       if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v1
-      with:
-        vs-version: ${{ matrix.vs_version }}
-    
+      uses: microsoft/setup-msbuild@v1  # Latest MSBuild setup for Windows
+
     - name: Set up CMake (Linux/MacOS)
       if: runner.os != 'Windows'
       run: |
@@ -61,10 +61,7 @@ jobs:
         zip -r artifacts.zip artifacts
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: SyDEVS-artifacts
-        path: artifacts.zip
+      uses: actions/upload-artifact@v3  # Latest version for uploading artifacts
 
     - name: Deploy to Release
       if: startsWith(github.ref, 'refs/tags/')
