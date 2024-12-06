@@ -2,8 +2,6 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
-    tags:
-      - 'v1.*' # Trigger on version tag pushes
   pull_request:
     branches:
       - main # Trigger on PR to main branch
