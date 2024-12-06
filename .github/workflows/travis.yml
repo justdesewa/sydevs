@@ -52,9 +52,9 @@ jobs:
 
     - name: Archive and deploy
       run: |
-        mkdir -p ${GITHUB_REF##/}/lib ${GITHUB_REF##/}/include
-        cp src/sydevs/core/.h ${GITHUB_REF##/}/include/sydevs/core
-        cp src/sydevs/systems/.h ${GITHUB_REF##/}/include/sydevs/systems
-        cp src/sydevs/time/.h ${GITHUB_REF##/}/include/sydevs/time
-        cp LICENSE.md ${GITHUB_REF##*/} &&
-        zip -r SyDEVS-${GITHUB_REF##/}${{ runner.os }}${{ matrix.cc }}.zip ${GITHUB_REF##/}
+        mkdir -p release/lib release/include/sydevs/core release/include/sydevs/systems release/include/sydevs/time
+            cp src/sydevs/core/*.h release/include/sydevs/core
+            cp src/sydevs/systems/*.h release/include/sydevs/systems
+            cp src/sydevs/time/*.h release/include/sydevs/time
+            cp LICENSE.md release/
+            zip -r SyDEVS-${{ github.ref_name }}-${{ runner.os }}-${{ matrix.cc }}.zip release/
