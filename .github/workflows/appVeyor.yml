@@ -40,7 +40,14 @@ jobs:
       run: mkdir build
 
     - name: Configure CMake project
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
+        # Fix: Remove or adjust unrecognized warning options for the current compiler
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Remove unsupported warning flags for Linux compilers
+          sed -i '/-Wlogical-op/d' CMakeFiles/CMakeCCompiler.cmake
+          sed -i '/-Wstrict-null-sentinel/d' CMakeFiles/CMakeCCompiler.cmake
+        fi
 
     - name: Build the project
       run: cmake --build build --config ${{ matrix.configuration }} --parallel
