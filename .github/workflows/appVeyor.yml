@@ -2,73 +2,77 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
-    branches-ignore:
-      - gh-pages
+    tags:
+      - 'v1.*' # Trigger on version tag pushes
   pull_request:
+    branches:
+      - main # Trigger on PR to main branch
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
-        os: [windows-latest]
-        vs-version: ["Visual Studio 2015", "Visual Studio 2017"]
-        vs-short: [VS2015, VS2017]
-        configuration: [Release, Debug]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        vs_version: ['2015', '2017']
+        configuration: ['Release', 'Debug']
+    
+    env:
+      MY_VS_VERSION: ${{ matrix.vs_version }}  # Visual Studio version for matrix
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v2
 
-    - name: Set up Visual Studio
-      uses: ilammy/msvc-dev-cmd@v1
+    - name: Set up Visual Studio (Windows only)
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v1
       with:
-        arch: x64
-        msvc-version: ${{ matrix.vs-version }}
-
-    - name: Configure with CMake
+        vs-version: ${{ matrix.vs_version }}
+    
+    - name: Set up CMake (Linux/MacOS)
+      if: runner.os != 'Windows'
       run: |
-        cmake -G "${{ matrix.vs-version }} Win64" .
+        mkdir -p cmake-download
+        curl -LO https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.sh
+        bash cmake-3.22.1-linux-x86_64.sh --skip-license --prefix=/usr/local
+        cmake --version
 
-    - name: Build the solution
-      run: |
-        cmake --build . --config ${{ matrix.configuration }} --parallel
+    - name: Create build directory
+      run: mkdir build
 
-    - name: Prepare artifacts
+    - name: Configure CMake project
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
+
+    - name: Build the project
+      run: cmake --build build --config ${{ matrix.configuration }} --parallel
+
+    - name: Archive Artifacts
       run: |
-        cd $GITHUB_WORKSPACE
         mkdir -p artifacts/lib artifacts/include/sydevs/core artifacts/include/sydevs/systems artifacts/include/sydevs/time
-        cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
-        cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
-        cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
-        cp build/${{ matrix.configuration }}/* artifacts/lib
-        cp LICENSE.md artifacts
+        if [ -d src/sydevs/core ]; then
+          cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
+        fi
+        if [ -d src/sydevs/systems ]; then
+          cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
+        fi
+        if [ -d src/sydevs/time ]; then
+          cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
+        fi
+        zip -r artifacts.zip artifacts
 
-    - name: Create zip archive
-      run: |
-        cd artifacts
-        zip -r SyDEVS-${{ github.sha }}${{ matrix.vs-short }}${{ matrix.configuration }}.zip .
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v2
       with:
-        name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
-        path: artifacts/*.zip
+        name: SyDEVS-artifacts
+        path: artifacts.zip
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/tags'
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
-
-    - name: Deploy artifact
-      env:
-        SYDEVS_ENV: ${{ secrets.SYDEVS_ENV }}
+    - name: Deploy to Release
+      if: startsWith(github.ref, 'refs/tags/')
       run: |
-        echo "Deploying artifact to SyDEVS-Releases..."
-        # Add deployment logic here
+        TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///')
+        curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        -X POST \
+        -d '{"tag_name": "$TAG_NAME", "target_commitish": "main", "name": "Release $TAG_NAME", "body": "Release for version $TAG_NAME", "draft": false, "prerelease": false}' \
+        https://api.github.com/repos/${{ github.repository }}/releases
