@@ -4,7 +4,7 @@ on:
   push:
   pull_request:
     branches:
-      - main # Trigger on PR to main branch
+      - main  # Trigger on PR to main branch
 
 jobs:
   build:
@@ -23,18 +23,19 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3  # Latest version
 
+    - name: Install CMake (Ubuntu/Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.sh
+        chmod +x cmake-3.22.1-linux-x86_64.sh
+        sudo ./cmake-3.22.1-linux-x86_64.sh --skip-license --prefix=/usr/local
+        cmake --version  # Verify installation
+
     - name: Set up Visual Studio (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v1  # Latest MSBuild setup for Windows
-
-    - name: Set up CMake (Linux/MacOS)
-      if: runner.os != 'Windows'
-      run: |
-        mkdir -p cmake-download
-        curl -LO https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.sh
-        chmod +x cmake-3.22.1-linux-x86_64.sh
-        sudo ./cmake-3.22.1-linux-x86_64.sh --skip-license --prefix=/usr/local
-        cmake --version
 
     - name: Create build directory
       run: mkdir build
