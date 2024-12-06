@@ -16,24 +16,25 @@ jobs:
         vs-short: [VS2015, VS2017]
         configuration: [Release, Debug]
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v3
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-  - name: Set up Visual Studio
-    uses: ilammy/msvc-dev-cmd@v1
-    with:
-      arch: x64
-      msvc-version: ${{ matrix.vs-version }}
+    - name: Set up Visual Studio
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+        msvc-version: ${{ matrix.vs-version }}
 
-  - name: Configure with CMake
-    run: |
-      cmake -G "${{ matrix.vs-version }} Win64" .
+    - name: Configure with CMake
+      run: |
+        cmake -G "${{ matrix.vs-version }} Win64" .
 
-  - name: Build the solution
-    run: |
-      cmake --build . --config ${{ matrix.configuration }} --parallel
-       - name: Prepare artifacts
+    - name: Build the solution
+      run: |
+        cmake --build . --config ${{ matrix.configuration }} --parallel
+
+    - name: Prepare artifacts
       run: |
         cd $GITHUB_WORKSPACE
         mkdir -p artifacts/lib artifacts/include/sydevs/core artifacts/include/sydevs/systems artifacts/include/sydevs/time
@@ -42,34 +43,32 @@ steps:
         cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
         cp build/${{ matrix.configuration }}/* artifacts/lib
         cp LICENSE.md artifacts
-  - name: Create zip archive
-    run: |
+
+    - name: Create zip archive
+      run: |
         cd artifacts
         zip -r SyDEVS-${{ github.sha }}${{ matrix.vs-short }}${{ matrix.configuration }}.zip .
 
-  - name: Upload artifact
+    - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
         path: artifacts/*.zip
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/tags'
 
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
 
-
-deploy:
-  needs: build
-  runs-on: ubuntu-latest
-  if: github.ref == 'refs/tags'
-
-  steps:
-  - name: Download artifact
-    uses: actions/download-artifact@v3
-    with:
-      name: SyDEVS-${{ github.sha }}-${{ matrix.vs-short }}-${{ matrix.configuration }}
-
-  - name: Deploy artifact
-    env:
-      SYDEVS_ENV: ${{ secrets.SYDEVS_ENV }}
-    run: |
-      echo "Deploying artifact to SyDEVS-Releases..."
-      # Add deployment logic here
+    - name: Deploy artifact
+      env:
+        SYDEVS_ENV: ${{ secrets.SYDEVS_ENV }}
+      run: |
+        echo "Deploying artifact to SyDEVS-Releases..."
+        # Add deployment logic here
