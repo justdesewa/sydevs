@@ -81,6 +81,13 @@ jobs:
     - name: Create build directory
       run: mkdir build
 
+    # Update CMakeLists.txt to disable warning for unused variables
+    - name: Update CMakeLists to remove unused variable warning
+      run: |
+        echo "Updating CMakeLists.txt to disable unused variable warning"
+        sed -i '' '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt
+        cat CMakeLists.txt  # Optional: to verify the changes
+
     # Configure CMake project
     - name: Configure CMake project
       run: |
@@ -91,14 +98,6 @@ jobs:
         else
           cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
         fi
-
-    # Modify CMakeLists to remove unsupported warning flags
-    - name: Update CMakeLists for unsupported warning flags
-      run: |
-        echo "Checking and removing unsupported warning flags"
-        sed -i '' 's/-Wlogical-op//g' CMakeLists.txt
-        sed -i '' 's/-Wstrict-null-sentinel//g' CMakeLists.txt
-        cat CMakeLists.txt  # Optional: to verify the changes
 
     # Build the project
     - name: Build the project
