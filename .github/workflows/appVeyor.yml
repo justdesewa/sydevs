@@ -23,16 +23,13 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3  # Latest version
 
-    # Install dependencies on Linux
+    # Install dependencies on Linux (Ubuntu)
     - name: Install CMake (Ubuntu/Linux)
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget
-        wget https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.sh
-        chmod +x cmake-3.22.1-linux-x86_64.sh
-        sudo ./cmake-3.22.1-linux-x86_64.sh --skip-license --prefix=/usr/local
-        cmake --version  # Verify installation
+        sudo apt-get install -y cmake  # Install CMake using apt-get
+        cmake --version  # Verify CMake installation
 
     # Install Visual Studio Build Tools for Windows
     - name: Install Visual Studio Build Tools (Windows)
@@ -81,27 +78,25 @@ jobs:
     - name: Create build directory
       run: mkdir build
 
-    # Update CMakeLists.txt to disable warning for unused variables
+    # Update CMakeLists.txt to remove unused variable warning
     - name: Update CMakeLists to remove unused variable warning
       run: |
         echo "Updating CMakeLists.txt to disable unused variable warning"
         sed -i '' '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt
         cat CMakeLists.txt  # Optional: to verify the changes
 
-    # Configure CMake project
-    - name: Configure CMake project
+    # Configure the project using CMake
+    - name: Configure with CMake
       run: |
-        if [ "${{ runner.os }}" == "macos" ]; then
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Xcode"
-        elif [ "${{ runner.os }}" == "Windows" ]; then
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Visual Studio ${MY_VS_VERSION} Win64"
-        else
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
-        fi
+        mkdir build
+        cd build
+        cmake ..  # Run CMake configuration
 
-    # Build the project
-    - name: Build the project
-      run: cmake --build build --config ${{ matrix.configuration }} --parallel
+    # Build the project using make
+    - name: Build project
+      run: |
+        cd build
+        make  # Build the project using make
 
     # Archive Artifacts
     - name: Archive Artifacts
