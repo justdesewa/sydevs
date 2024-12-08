@@ -76,13 +76,17 @@ jobs:
 
     # Create build directory
     - name: Create build directory
-      run: mkdir build
+      run: mkdir -p build
 
     # Update CMakeLists.txt to remove unused variable warning
     - name: Update CMakeLists to remove unused variable warning
       run: |
         echo "Updating CMakeLists.txt to disable unused variable warning"
-        sed -i '' '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt
+        if [ "$RUNNER_OS" == "macos" ]; then
+          sed -i '' '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt  # macOS
+        else
+          sed -i '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt  # Linux
+        fi
         cat CMakeLists.txt  # Optional: to verify the changes
 
     # Build the project
