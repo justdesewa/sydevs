@@ -62,14 +62,33 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v1  # Latest MSBuild setup for Windows
 
+    # Install Xcode Command Line Tools for macOS
+    - name: Install Xcode Command Line Tools (macOS)
+      if: runner.os == 'macos'
+      run: |
+        xcode-select --install || true  # Install Command Line Tools
+
+    # Verify CMake and Xcode for macOS
+    - name: Verify CMake and Xcode (macOS)
+      if: runner.os == 'macos'
+      run: |
+        echo "Verifying Xcode installation"
+        xcode-select -p  # Verify Xcode installation
+        cmake --version  # Verify CMake installation
+        xcodebuild -version  # Verify Xcode version
+
     # Create build directory
     - name: Create build directory
       run: mkdir build
 
-    # Configure CMake project
+    # Configure CMake project for macOS
     - name: Configure CMake project
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Visual Studio ${MY_VS_VERSION} ${runner.os == 'Windows' && 'Win64' || ''}"
+        if [ "${{ runner.os }}" == "macos" ]; then
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Xcode"
+        else
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Visual Studio ${MY_VS_VERSION} ${runner.os == 'Windows' && 'Win64' || ''}"
+        fi
 
     # Update compiler flags for Linux
     - name: Update compiler flags (Linux only)
