@@ -6,9 +6,10 @@ on:
     branches:
       - Rasheedat/ci
   workflow_dispatch:
+
 jobs:
   build:
-    runs-on: windows-2022  # Using windows-2022 to ensure we have the latest Visual Studio versions
+    runs-on: windows-2022  # Ensure we're using the latest Windows image
 
     strategy:
       matrix:
@@ -23,15 +24,17 @@ jobs:
       # Install Visual Studio Build Tools (if not already available)
       - name: Install Visual Studio Build Tools
         run: |
+          # Check if Visual Studio 2019 Build Tools are installed
           if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2019\BuildTools")) {
             Write-Host "Installing Visual Studio Build Tools 2019"
-            # Install Visual Studio Build Tools 2019
-            choco install visualstudio2019buildtools --version=16.11.7 --yes
+            # Install Visual Studio Build Tools 2019 without specifying version
+            choco install visualstudio2019buildtools --yes
           }
+          # Check if Visual Studio 2022 Build Tools are installed
           if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2022\BuildTools")) {
             Write-Host "Installing Visual Studio Build Tools 2022"
-            # Install Visual Studio Build Tools 2022
-            choco install visualstudio2022buildtools --version=17.0.0 --yes
+            # Install Visual Studio Build Tools 2022 without specifying a version
+            choco install visualstudio2022buildtools --yes
           }
 
       # Verify Visual Studio Installation
@@ -40,7 +43,7 @@ jobs:
           where msbuild
           vswhere -all -format json
 
-      # Set up Visual Studio
+      # Set up MSBuild for Visual Studio
       - name: Set up MSBuild for Visual Studio
         uses: microsoft/setup-msbuild@v1
 
