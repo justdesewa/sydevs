@@ -85,19 +85,6 @@ jobs:
         sed -i '' '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt
         cat CMakeLists.txt  # Optional: to verify the changes
 
-    # Configure the project using CMake
-    - name: Configure with CMake
-      run: |
-        
-        cd build
-        cmake ..  # Run CMake configuration
-
-    # Build the project using make
-    - name: Build project
-      run: |
-        cd build
-        make  # Build the project using make
-
     # Archive Artifacts
     - name: Archive Artifacts
       run: |
