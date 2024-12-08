@@ -4,7 +4,7 @@ on:
   push:
   pull_request:
     branches:
-      - main  # Trigger on PR to main branch
+      - Rasheedat/ci
 
 jobs:
   build:
@@ -12,18 +12,34 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        vs_version: ['2015', '2017']
-        configuration: ['Release', 'Debug']
+        include:
+          - os: ubuntu-latest
+            vs_version: '2017'
+            configuration: 'Release'
+          - os: ubuntu-latest
+            vs_version: '2017'
+            configuration: 'Debug'
+          - os: windows-latest
+            vs_version: '2017'
+            configuration: 'Release'
+          - os: windows-latest
+            vs_version: '2017'
+            configuration: 'Debug'
+          - os: macos-latest
+            vs_version: '2017'
+            configuration: 'Release'
+          - os: macos-latest
+            vs_version: '2017'
+            configuration: 'Debug'
 
     env:
-      MY_VS_VERSION: ${{ matrix.vs_version }}  # Visual Studio version for matrix
+      MY_VS_VERSION: ${{ matrix.vs_version }}
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v3  # Latest version
+      uses: actions/checkout@v3
 
-    - name: Install CMake (Ubuntu/Linux)
+    - name: Install CMake (Linux only)
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
@@ -31,29 +47,32 @@ jobs:
         wget https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.sh
         chmod +x cmake-3.22.1-linux-x86_64.sh
         sudo ./cmake-3.22.1-linux-x86_64.sh --skip-license --prefix=/usr/local
-        cmake --version  # Verify installation
+        cmake --version
 
     - name: Set up Visual Studio (Windows only)
       if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v1  # Latest MSBuild setup for Windows
+      uses: microsoft/setup-msbuild@v1
 
     - name: Create build directory
       run: mkdir build
 
     - name: Configure CMake project
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
+        if [[ ${{ runner.os }} == 'macOS' ]]; then
+          cmake -S . -B build -G "Xcode" -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+        else
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
+        fi
 
-    - name: Update compiler flags (Linux only)
+    - name: Update Compiler Flags (Linux only)
       if: runner.os == 'Linux'
       run: |
-        # Set CMake options to disable problematic warning flags for modern compilers
-        echo "Disabling unsupported warning flags"
-        echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> CMakeLists.txt
-        echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> CMakeLists.txt
+        echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> build_flags.cmake
+        echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> build_flags.cmake
 
     - name: Build the project
-      run: cmake --build build --config ${{ matrix.configuration }} --parallel
+      run: |
+        cmake --build build --config ${{ matrix.configuration }} --parallel --verbose
 
     - name: Archive Artifacts
       run: |
@@ -70,7 +89,10 @@ jobs:
         zip -r artifacts.zip artifacts
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3  # Latest version for uploading artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: artifacts.zip
 
     - name: Deploy to Release
       if: startsWith(github.ref, 'refs/tags/')
