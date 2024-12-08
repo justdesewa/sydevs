@@ -6,11 +6,9 @@ on:
     branches:
       - Rasheedat/ci
   workflow_dispatch:
-
-
 jobs:
   build:
-    runs-on: windows-2022  # Use windows-2022 to ensure latest Visual Studio version is available
+    runs-on: windows-2022  # Using windows-2022 to ensure we have the latest Visual Studio versions
 
     strategy:
       matrix:
@@ -22,23 +20,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Verify installed Visual Studio versions
-      - name: List Installed Visual Studio Versions
+      # Install Visual Studio Build Tools (if not already available)
+      - name: Install Visual Studio Build Tools
+        run: |
+          if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2019\BuildTools")) {
+            Write-Host "Installing Visual Studio Build Tools 2019"
+            # Install Visual Studio Build Tools 2019
+            choco install visualstudio2019buildtools --version=16.11.7 --yes
+          }
+          if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2022\BuildTools")) {
+            Write-Host "Installing Visual Studio Build Tools 2022"
+            # Install Visual Studio Build Tools 2022
+            choco install visualstudio2022buildtools --version=17.0.0 --yes
+          }
+
+      # Verify Visual Studio Installation
+      - name: Verify Visual Studio Installation
         run: |
           where msbuild
           vswhere -all -format json
-          cmake --version
 
       # Set up Visual Studio
-      - name: Set up Visual Studio
+      - name: Set up MSBuild for Visual Studio
         uses: microsoft/setup-msbuild@v1
 
-      # Generate build system with CMake
+      # Configure the CMake build system
       - name: Configure with CMake
         run: |
           cmake -G "${{ matrix.vs_version }}" -S . -B build
 
-      # Build with MSBuild
+      # Build the project
       - name: Build with MSBuild
         run: |
           cmake --build build --config ${{ matrix.configuration }} --parallel
