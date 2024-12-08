@@ -16,26 +16,26 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3  # Updated to the latest version (v3)
 
     - name: Set up Visual Studio
       run: |
         if [ ${{ matrix.vs-version }} == 2015 ]; then
-          $vs_version="Visual Studio 14 2015 Win64"
-          $vs_short="VS2015"
+          vs_version="Visual Studio 14 2015 Win64"
+          vs_short="VS2015"
         elif [ ${{ matrix.vs-version }} == 2017 ]; then
-          $vs_version="Visual Studio 15 2017 Win64"
-          $vs_short="VS2017"
+          vs_version="Visual Studio 15 2017 Win64"
+          vs_short="VS2017"
         fi
 
     - name: Install CMake
-      uses: actions/setup-cmake@v2
+      uses: actions/setup-cmake@v3  # Updated to the latest version (v3)
       with:
         cmake-version: '3.22'
 
     - name: Configure CMake
       run: |
-        cmake -G "%vs_version%" .
+        cmake -G "${vs_version}" .
 
     - name: Build with MSBuild
       run: |
@@ -69,7 +69,7 @@ jobs:
         7z a "${ARCHIVE_NAME}.zip" "%CONTENT_NAME%"
 
     - name: Upload artifact to GitHub
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3  # Updated to the latest version (v3)
       with:
         name: ${{ steps.create-archive.outputs.archive-name }}
         path: ${{ steps.create-archive.outputs.archive-path }}
@@ -80,7 +80,7 @@ jobs:
     if: github.ref == 'refs/tags/*'
     steps:
     - name: Download artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3  # Updated to the latest version (v3)
       with:
         name: ${{ needs.build.outputs.archive-name }}
         path: .
