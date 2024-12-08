@@ -85,6 +85,13 @@ jobs:
         sed -i '' '/set(CMAKE_CXX_FLAGS/ s/$/ -Wno-unused-but-set-variable/' CMakeLists.txt
         cat CMakeLists.txt  # Optional: to verify the changes
 
+    # Build the project
+    - name: Build Project
+      run: |
+        cd build
+        cmake ..
+        make
+
     # Archive Artifacts
     - name: Archive Artifacts
       run: |
@@ -103,6 +110,9 @@ jobs:
     # Upload Artifacts
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3  # Latest version for uploading artifacts
+      with:
+        name: artifact  # The name of the artifact
+        path: artifacts.zip  # Path to the archived artifacts.zip
 
     # Deploy to Release
     - name: Deploy to Release
