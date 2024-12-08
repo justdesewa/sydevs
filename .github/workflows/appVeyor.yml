@@ -7,9 +7,6 @@ on:
       - main
   workflow_dispatch: # Allows manual trigger
 
-  tags:
-    - '*'
-
 jobs:
   build:
     runs-on: windows-latest
