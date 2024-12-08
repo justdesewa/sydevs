@@ -2,8 +2,9 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
+  pull_request:
     branches:
-      - Raheedat/ci
+      - Rasheedat/ci
   workflow_dispatch:
 
 jobs:
