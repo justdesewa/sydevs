@@ -92,6 +92,14 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
         fi
 
+    # Modify CMakeLists to remove unsupported warning flags
+    - name: Update CMakeLists for unsupported warning flags
+      run: |
+        echo "Checking and removing unsupported warning flags"
+        sed -i '' 's/-Wlogical-op//g' CMakeLists.txt
+        sed -i '' 's/-Wstrict-null-sentinel//g' CMakeLists.txt
+        cat CMakeLists.txt  # Optional: to verify the changes
+
     # Build the project
     - name: Build the project
       run: cmake --build build --config ${{ matrix.configuration }} --parallel
