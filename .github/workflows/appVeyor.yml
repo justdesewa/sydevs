@@ -2,109 +2,91 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
-    branches:
-      - Rasheedat/ci
   pull_request:
     branches:
       - Rasheedat/ci
-  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest  # Use the latest Windows server image available
-
+    runs-on: windows-latest
     strategy:
       matrix:
+        vs-version: [2015, 2017]
         configuration: [Release, Debug]
-        vs_version: ["Visual Studio 16 2019", "Visual Studio 17 2022"]  # Supported VS versions
 
     steps:
-      # Checkout the repository
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      # Install Visual Studio Build Tools if not installed
-      - name: Install Visual Studio Build Tools
-        run: |
-          # Install Visual Studio 2019 Build Tools
-          if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2019\BuildTools")) {
-            Write-Host "Installing Visual Studio Build Tools 2019"
-            choco install visualstudio2019buildtools --version 16.11.7 --yes
-          }
+    - name: Set up Visual Studio
+      run: |
+        if [ ${{ matrix.vs-version }} == 2015 ]; then
+          $vs_version="Visual Studio 14 2015 Win64"
+          $vs_short="VS2015"
+        elif [ ${{ matrix.vs-version }} == 2017 ]; then
+          $vs_version="Visual Studio 15 2017 Win64"
+          $vs_short="VS2017"
+        fi
 
-          # Install Visual Studio 2022 Build Tools
-          if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2022\BuildTools")) {
-            Write-Host "Installing Visual Studio Build Tools 2022"
-            choco install visualstudio2022buildtools --version 17.0 --yes
-          }
+    - name: Install CMake
+      uses: actions/setup-cmake@v2
+      with:
+        cmake-version: '3.22'
 
-      # Check if Visual Studio is installed and print the MSBuild path
-      - name: Verify Visual Studio Installation
-        run: |
-          # Check Visual Studio installation using vswhere
-          vswhere -all -format json
-          where msbuild
+    - name: Configure CMake
+      run: |
+        cmake -G "%vs_version%" .
 
-      # Set up MSBuild for Visual Studio
-      - name: Set up MSBuild for Visual Studio
-        uses: microsoft/setup-msbuild@v1
+    - name: Build with MSBuild
+      run: |
+        msbuild "$(AppVeyor.BuildFolder)\SyDEVS.sln" /p:Configuration=${{ matrix.configuration }} /m
 
-      # Install CMake (if not installed by default)
-      - name: Install CMake
-        run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --yes
-          cmake --version
+    - name: Create content folder and copy files
+      run: |
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/tags/"* ]]; then
+          TAG_NAME="${GITHUB_REF##*/}"
+          CONTENT_NAME="sydevs-${TAG_NAME}"
+        else
+          COMMIT="${GITHUB_SHA}"
+          CONTENT_NAME="sydevs-${COMMIT}"
+        fi
+        mkdir "%CONTENT_NAME%" "%CONTENT_NAME%\lib" "%CONTENT_NAME%\include" "%CONTENT_NAME%\include\sydevs" "%CONTENT_NAME%\include\sydevs\systems" "%CONTENT_NAME%\include\sydevs\time" "%CONTENT_NAME%\include\sydevs\core"
+        copy src\sydevs\core\*.h "%CONTENT_NAME%\include\sydevs\core"
+        copy src\sydevs\systems\*.h "%CONTENT_NAME%\include\sydevs\systems"
+        copy src\sydevs\time\*.h "%CONTENT_NAME%\include\sydevs\time"
+        copy "$(AppVeyor.BuildFolder)\${{ matrix.configuration }}\SyDEVS*.*" "%CONTENT_NAME%\lib"
+        copy LICENSE.md "%CONTENT_NAME%"
 
-      # Configure the CMake build system
-      - name: Configure with CMake
-        run: |
-          cmake -G "${{ matrix.vs_version }}" -S . -B build
-        continue-on-error: false
+    - name: Create ZIP archive
+      run: |
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/tags/"* ]]; then
+          TAG_NAME="${GITHUB_REF##*/}"
+          ARCHIVE_NAME="SyDEVS-${TAG_NAME}_Win64_${{ matrix.vs-short }}_${{ matrix.configuration }}"
+        else
+          COMMIT="${GITHUB_SHA}"
+          ARCHIVE_NAME="SyDEVS-${COMMIT}_Win64_${{ matrix.vs-short }}_${{ matrix.configuration }}"
+        fi
+        7z a "${ARCHIVE_NAME}.zip" "%CONTENT_NAME%"
 
-      # Build the project
-      - name: Build with MSBuild
-        run: |
-          cmake --build build --config ${{ matrix.configuration }} --parallel
-
-      # Archive artifacts
-      - name: Archive artifacts
-        run: |
-          cd build
-          CONTENT_NAME="sydevs-${GITHUB_REF_NAME:-${GITHUB_SHA}}"
-          mkdir -p $CONTENT_NAME/lib $CONTENT_NAME/include/sydevs/{core,systems,time}
-
-          # Copy headers
-          if exist ..\src\sydevs\core (xcopy ..\src\sydevs\core $CONTENT_NAME\include\sydevs\core /s /i)
-          if exist ..\src\sydevs\systems (xcopy ..\src\sydevs\systems $CONTENT_NAME\include\sydevs\systems /s /i)
-          if exist ..\src\sydevs\time (xcopy ..\src\sydevs\time $CONTENT_NAME\include\sydevs\time /s /i)
-
-          # Copy library files
-          xcopy ${{ matrix.configuration }} $CONTENT_NAME\lib /s /i
-
-          # Include license
-          copy ..\LICENSE.md $CONTENT_NAME
-
-          ARCHIVE_NAME="SyDEVS-${GITHUB_REF_NAME:-${GITHUB_SHA}}_Win64_${{ matrix.vs_version }}_${{ matrix.configuration }}.zip"
-          7z a $ARCHIVE_NAME.zip $CONTENT_NAME
-
-          # Export archive for later steps
-          echo "ARCHIVE_NAME=$ARCHIVE_NAME.zip" >> $GITHUB_ENV
-
-      # Upload artifacts
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ env.ARCHIVE_NAME }}
-          path: ${{ env.ARCHIVE_NAME }}
+    - name: Upload artifact to GitHub
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ steps.create-archive.outputs.archive-name }}
+        path: ${{ steps.create-archive.outputs.archive-path }}
 
   deploy:
-    runs-on: ubuntu-latest
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    if: github.ref == 'refs/tags/*'
     steps:
-      - name: Deploy release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ${{ env.ARCHIVE_NAME }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Download artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ needs.build.outputs.archive-name }}
+        path: .
+
+    - name: Deploy to SyDEVS-Releases
+      run: |
+        # Example deployment steps
+        echo "Deploying ${ARCHIVE_NAME} to SyDEVS-Releases..."
+        # Add your deployment script here
