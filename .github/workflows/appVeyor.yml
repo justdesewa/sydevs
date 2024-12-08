@@ -88,7 +88,7 @@ jobs:
     # Configure the project using CMake
     - name: Configure with CMake
       run: |
-        mkdir build
+        
         cd build
         cmake ..  # Run CMake configuration
 
