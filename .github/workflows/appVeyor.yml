@@ -2,6 +2,8 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
+    branches:
+      - Rasheedat/ci
   pull_request:
     branches:
       - Rasheedat/ci
@@ -9,48 +11,55 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2022  # Ensure we're using the latest Windows image
+    runs-on: windows-latest  # Use the latest Windows server image available
 
     strategy:
       matrix:
         configuration: [Release, Debug]
-        vs_version: ["Visual Studio 16 2019", "Visual Studio 17 2022"]
+        vs_version: ["Visual Studio 16 2019", "Visual Studio 17 2022"]  # Supported VS versions
 
     steps:
       # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Install Visual Studio Build Tools (if not already available)
+      # Install Visual Studio Build Tools if not installed
       - name: Install Visual Studio Build Tools
         run: |
-          # Check if Visual Studio 2019 Build Tools are installed
+          # Install Visual Studio 2019 Build Tools
           if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2019\BuildTools")) {
             Write-Host "Installing Visual Studio Build Tools 2019"
-            # Install Visual Studio Build Tools 2019 without specifying version
-            choco install visualstudio2019buildtools --yes
-          }
-          # Check if Visual Studio 2022 Build Tools are installed
-          if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2022\BuildTools")) {
-            Write-Host "Installing Visual Studio Build Tools 2022"
-            # Install Visual Studio Build Tools 2022 without specifying a version
-            choco install visualstudio2022buildtools --yes
+            choco install visualstudio2019buildtools --version 16.11.7 --yes
           }
 
-      # Verify Visual Studio Installation
+          # Install Visual Studio 2022 Build Tools
+          if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2022\BuildTools")) {
+            Write-Host "Installing Visual Studio Build Tools 2022"
+            choco install visualstudio2022buildtools --version 17.0 --yes
+          }
+
+      # Check if Visual Studio is installed and print the MSBuild path
       - name: Verify Visual Studio Installation
         run: |
-          where msbuild
+          # Check Visual Studio installation using vswhere
           vswhere -all -format json
+          where msbuild
 
       # Set up MSBuild for Visual Studio
       - name: Set up MSBuild for Visual Studio
         uses: microsoft/setup-msbuild@v1
 
+      # Install CMake (if not installed by default)
+      - name: Install CMake
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --yes
+          cmake --version
+
       # Configure the CMake build system
       - name: Configure with CMake
         run: |
           cmake -G "${{ matrix.vs_version }}" -S . -B build
+        continue-on-error: false
 
       # Build the project
       - name: Build with MSBuild
