@@ -10,39 +10,33 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022  # Use windows-2022 to ensure latest Visual Studio version is available
 
     strategy:
       matrix:
         configuration: [Release, Debug]
-        vs_version: 
-          - name: Visual Studio 2019
-            generator: "Visual Studio 16 2019"
-            short_name: "VS2019"
-          - name: Visual Studio 2022
-            generator: "Visual Studio 17 2022"
-            short_name: "VS2022"
+        vs_version: ["Visual Studio 16 2019", "Visual Studio 17 2022"]
 
     steps:
       # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Verify installed Visual Studio versions
+      - name: List Installed Visual Studio Versions
+        run: |
+          where msbuild
+          vswhere -all -format json
+          cmake --version
+
       # Set up Visual Studio
       - name: Set up Visual Studio
         uses: microsoft/setup-msbuild@v1
 
-      # Verify Visual Studio installation
-      - name: Verify MSBuild and VSWhere
-        run: |
-          where msbuild
-          vswhere -all
-          cmake --version
-
       # Generate build system with CMake
       - name: Configure with CMake
         run: |
-          cmake -G "${{ matrix.vs_version.generator }}" -S . -B build
+          cmake -G "${{ matrix.vs_version }}" -S . -B build
 
       # Build with MSBuild
       - name: Build with MSBuild
@@ -67,7 +61,7 @@ jobs:
           # Include license
           copy ..\LICENSE.md $CONTENT_NAME
 
-          ARCHIVE_NAME="SyDEVS-${GITHUB_REF_NAME:-${GITHUB_SHA}}_Win64_${{ matrix.vs_version.short_name }}_${{ matrix.configuration }}.zip"
+          ARCHIVE_NAME="SyDEVS-${GITHUB_REF_NAME:-${GITHUB_SHA}}_Win64_${{ matrix.vs_version }}_${{ matrix.configuration }}.zip"
           7z a $ARCHIVE_NAME.zip $CONTENT_NAME
 
           # Export archive for later steps
