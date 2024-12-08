@@ -4,8 +4,9 @@ on:
   push:
   pull_request:
     branches:
-      - main
-  workflow_dispatch: # Allows manual trigger
+      - Rasheedat/ci
+  workflow_dispatch:
+
 
 jobs:
   build:
@@ -15,12 +16,12 @@ jobs:
       matrix:
         configuration: [Release, Debug]
         vs_version: 
-          - name: Visual Studio 2017
-            generator: "Visual Studio 15 2017 Win64"
-            short_name: "VS2017"
           - name: Visual Studio 2019
             generator: "Visual Studio 16 2019"
             short_name: "VS2019"
+          - name: Visual Studio 2022
+            generator: "Visual Studio 17 2022"
+            short_name: "VS2022"
 
     steps:
       # Checkout the repository
@@ -31,35 +32,40 @@ jobs:
       - name: Set up Visual Studio
         uses: microsoft/setup-msbuild@v1
 
+      # Verify Visual Studio installation
+      - name: Verify MSBuild and VSWhere
+        run: |
+          where msbuild
+          vswhere -all
+          cmake --version
+
       # Generate build system with CMake
       - name: Configure with CMake
         run: |
-          cmake -G "${{ matrix.vs_version.generator }}" .
+          cmake -G "${{ matrix.vs_version.generator }}" -S . -B build
 
       # Build with MSBuild
       - name: Build with MSBuild
         run: |
-          cmake --build . --config ${{ matrix.configuration }} --parallel
-        env:
-          CONFIGURATION: ${{ matrix.configuration }}
+          cmake --build build --config ${{ matrix.configuration }} --parallel
 
       # Archive artifacts
       - name: Archive artifacts
         run: |
-          cd $GITHUB_WORKSPACE
+          cd build
           CONTENT_NAME="sydevs-${GITHUB_REF_NAME:-${GITHUB_SHA}}"
           mkdir -p $CONTENT_NAME/lib $CONTENT_NAME/include/sydevs/{core,systems,time}
 
           # Copy headers
-          if exist src/sydevs/core (xcopy src\sydevs\core $CONTENT_NAME\include\sydevs\core /s /i)
-          if exist src/sydevs/systems (xcopy src\sydevs\systems $CONTENT_NAME\include\sydevs\systems /s /i)
-          if exist src/sydevs/time (xcopy src\sydevs\time $CONTENT_NAME\include\sydevs\time /s /i)
+          if exist ..\src\sydevs\core (xcopy ..\src\sydevs\core $CONTENT_NAME\include\sydevs\core /s /i)
+          if exist ..\src\sydevs\systems (xcopy ..\src\sydevs\systems $CONTENT_NAME\include\sydevs\systems /s /i)
+          if exist ..\src\sydevs\time (xcopy ..\src\sydevs\time $CONTENT_NAME\include\sydevs\time /s /i)
 
           # Copy library files
           xcopy ${{ matrix.configuration }} $CONTENT_NAME\lib /s /i
 
           # Include license
-          copy LICENSE.md $CONTENT_NAME
+          copy ..\LICENSE.md $CONTENT_NAME
 
           ARCHIVE_NAME="SyDEVS-${GITHUB_REF_NAME:-${GITHUB_SHA}}_Win64_${{ matrix.vs_version.short_name }}_${{ matrix.configuration }}.zip"
           7z a $ARCHIVE_NAME.zip $CONTENT_NAME
@@ -82,6 +88,6 @@ jobs:
       - name: Deploy release
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ needs.build.outputs.ARTIFACT_NAME }}
+          files: ${{ env.ARCHIVE_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
