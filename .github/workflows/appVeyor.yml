@@ -4,101 +4,87 @@ on:
   push:
   pull_request:
     branches:
-      - Rasheedat/ci
+      - main
+  workflow_dispatch: # Allows manual trigger
+
+  tags:
+    - '*'
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            vs_version: '2017'
-            configuration: 'Release'
-          - os: ubuntu-latest
-            vs_version: '2017'
-            configuration: 'Debug'
-          - os: windows-latest
-            vs_version: '2017'
-            configuration: 'Release'
-          - os: windows-latest
-            vs_version: '2017'
-            configuration: 'Debug'
-          - os: macos-latest
-            vs_version: '2017'
-            configuration: 'Release'
-          - os: macos-latest
-            vs_version: '2017'
-            configuration: 'Debug'
-
-    env:
-      MY_VS_VERSION: ${{ matrix.vs_version }}
+        configuration: [Release, Debug]
+        vs_version: 
+          - name: Visual Studio 2017
+            generator: "Visual Studio 15 2017 Win64"
+            short_name: "VS2017"
+          - name: Visual Studio 2019
+            generator: "Visual Studio 16 2019"
+            short_name: "VS2019"
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install CMake (Linux only)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget
-        wget https://cmake.org/files/v3.22/cmake-3.22.1-linux-x86_64.sh
-        chmod +x cmake-3.22.1-linux-x86_64.sh
-        sudo ./cmake-3.22.1-linux-x86_64.sh --skip-license --prefix=/usr/local
-        cmake --version
+      # Set up Visual Studio
+      - name: Set up Visual Studio
+        uses: microsoft/setup-msbuild@v1
 
-    - name: Set up Visual Studio (Windows only)
-      if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v1
+      # Generate build system with CMake
+      - name: Configure with CMake
+        run: |
+          cmake -G "${{ matrix.vs_version.generator }}" .
 
-    - name: Create build directory
-      run: mkdir build
+      # Build with MSBuild
+      - name: Build with MSBuild
+        run: |
+          cmake --build . --config ${{ matrix.configuration }} --parallel
+        env:
+          CONFIGURATION: ${{ matrix.configuration }}
 
-    - name: Configure CMake project
-      run: |
-        if [[ ${{ runner.os }} == 'macOS' ]]; then
-          cmake -S . -B build -G "Xcode" -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
-        else
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
-        fi
+      # Archive artifacts
+      - name: Archive artifacts
+        run: |
+          cd $GITHUB_WORKSPACE
+          CONTENT_NAME="sydevs-${GITHUB_REF_NAME:-${GITHUB_SHA}}"
+          mkdir -p $CONTENT_NAME/lib $CONTENT_NAME/include/sydevs/{core,systems,time}
 
-    - name: Update Compiler Flags (Linux only)
-      if: runner.os == 'Linux'
-      run: |
-        echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> build_flags.cmake
-        echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> build_flags.cmake
+          # Copy headers
+          if exist src/sydevs/core (xcopy src\sydevs\core $CONTENT_NAME\include\sydevs\core /s /i)
+          if exist src/sydevs/systems (xcopy src\sydevs\systems $CONTENT_NAME\include\sydevs\systems /s /i)
+          if exist src/sydevs/time (xcopy src\sydevs\time $CONTENT_NAME\include\sydevs\time /s /i)
 
-    - name: Build the project
-      run: |
-        cmake --build build --config ${{ matrix.configuration }} --parallel --verbose
+          # Copy library files
+          xcopy ${{ matrix.configuration }} $CONTENT_NAME\lib /s /i
 
-    - name: Archive Artifacts
-      run: |
-        mkdir -p artifacts/lib artifacts/include/sydevs/core artifacts/include/sydevs/systems artifacts/include/sydevs/time
-        if [ -d src/sydevs/core ]; then
-          cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
-        fi
-        if [ -d src/sydevs/systems ]; then
-          cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
-        fi
-        if [ -d src/sydevs/time ]; then
-          cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
-        fi
-        zip -r artifacts.zip artifacts
+          # Include license
+          copy LICENSE.md $CONTENT_NAME
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: build-artifacts
-        path: artifacts.zip
+          ARCHIVE_NAME="SyDEVS-${GITHUB_REF_NAME:-${GITHUB_SHA}}_Win64_${{ matrix.vs_version.short_name }}_${{ matrix.configuration }}.zip"
+          7z a $ARCHIVE_NAME.zip $CONTENT_NAME
 
-    - name: Deploy to Release
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///')
-        curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-        -X POST \
-        -d '{"tag_name": "$TAG_NAME", "target_commitish": "main", "name": "Release $TAG_NAME", "body": "Release for version $TAG_NAME", "draft": false, "prerelease": false}' \
-        https://api.github.com/repos/${{ github.repository }}/releases
+          # Export archive for later steps
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME.zip" >> $GITHUB_ENV
+
+      # Upload artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARCHIVE_NAME }}
+          path: ${{ env.ARCHIVE_NAME }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Deploy release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ needs.build.outputs.ARTIFACT_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
