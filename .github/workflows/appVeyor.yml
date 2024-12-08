@@ -81,23 +81,16 @@ jobs:
     - name: Create build directory
       run: mkdir build
 
-    # Configure CMake project for macOS
+    # Configure CMake project
     - name: Configure CMake project
       run: |
         if [ "${{ runner.os }}" == "macos" ]; then
           cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Xcode"
+        elif [ "${{ runner.os }}" == "Windows" ]; then
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Visual Studio ${MY_VS_VERSION} Win64"
         else
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Visual Studio ${MY_VS_VERSION} ${runner.os == 'Windows' && 'Win64' || ''}"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -G "Unix Makefiles"
         fi
-
-    # Update compiler flags for Linux
-    - name: Update compiler flags (Linux only)
-      if: runner.os == 'Linux'
-      run: |
-        # Set CMake options to disable problematic warning flags for modern compilers
-        echo "Disabling unsupported warning flags"
-        echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> CMakeLists.txt
-        echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS} -Wno-logical-op -Wno-strict-null-sentinel\")" >> CMakeLists.txt
 
     # Build the project
     - name: Build the project
