@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - Rasheedat/ci
+      - main
   workflow_dispatch:
 
 jobs:
@@ -13,39 +14,17 @@ jobs:
 
     strategy:
       matrix:
-        os: [ macos-latest]
-        compiler: [gcc-12, clang-14]
-        vs_version: ['2019', '2022']
+        os: [ubuntu-latest, macos-latest]  # Supported operating systems
+        compiler: [gcc-12, clang-14]      # Compiler options
         configuration: ['Release', 'Debug']
-        include:
-          - os: ubuntu-latest
-            compiler: gcc-12
-            vs_version: ''
-          - os: ubuntu-latest
-            compiler: clang-14
-            vs_version: ''
-          - os: macos-latest
-            compiler: ''
-            vs_version: ''
-          - os: windows-latest
-            compiler: ''
-            vs_version: '2019'
-          - os: windows-latest
-            compiler: ''
-            vs_version: '2022'
-
-    env:
-      MY_VS_VERSION: ${{ matrix.vs_version }}
-      CC: ${{ matrix.compiler }}
-      CXX: ${{ matrix.compiler }}++
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    # Install dependencies for Linux
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
+    # Install dependencies for Ubuntu
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y software-properties-common
@@ -60,26 +39,13 @@ jobs:
         fi
         sudo apt-get install -y cmake
 
-    # Install dependencies for Windows
-    - name: Install Visual Studio Build Tools (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\$env:MY_VS_VERSION\BuildTools")) {
-          Write-Host "Installing Visual Studio Build Tools $env:MY_VS_VERSION"
-          choco install visualstudio$env:MY_VS_VERSIONbuildtools --yes
-        }
-        vswhere -products * -requires Microsoft.Component.MSBuild -property installationPath
-
-    - name: Set up MSBuild (Windows)
-      if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v1
-
     # Install dependencies for macOS
     - name: Install dependencies (macOS)
-      if: runner.os == 'macos'
+      if: matrix.os == 'macos-latest'
       run: |
-        xcode-select --install || true
-        cmake --version
+        xcode-select --install || true  # Install Xcode command line tools
+        brew install cmake  # Ensure CMake is installed
+        cmake --version  # Verify installation
 
     # Configure and Build
     - name: Configure with CMake
@@ -116,7 +82,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Only Ubuntu is used for release job
 
     steps:
     - name: Checkout repository
