@@ -6,7 +6,7 @@ on:
       - 'v*.*.*'
   pull_request:
     branches:
-      - Rasheedat/ci
+      - main
   workflow_dispatch:
 
 jobs:
