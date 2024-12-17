@@ -50,7 +50,13 @@ jobs:
     # Archive Artifacts
     - name: Archive Artifacts
       run: |
-        mkdir -p artifacts/lib artifacts/include/sydevs/core artifacts/include/sydevs/systems artifacts/include/sydevs/time
+        # Create directories using PowerShell
+        New-Item -ItemType Directory -Path artifacts/lib -Force
+        New-Item -ItemType Directory -Path artifacts/include/sydevs/core -Force
+        New-Item -ItemType Directory -Path artifacts/include/sydevs/systems -Force
+        New-Item -ItemType Directory -Path artifacts/include/sydevs/time -Force
+
+        # Copy header files if directories exist
         if (Test-Path src/sydevs/core) {
           Copy-Item src/sydevs/core/*.h -Destination artifacts/include/sydevs/core -Force
         }
@@ -60,6 +66,8 @@ jobs:
         if (Test-Path src/sydevs/time) {
           Copy-Item src/sydevs/time/*.h -Destination artifacts/include/sydevs/time -Force
         }
+
+        # Compress artifacts into a zip file
         Compress-Archive -Path artifacts/* -DestinationPath artifacts.zip
 
     # Upload Artifacts
