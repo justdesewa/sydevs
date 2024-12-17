@@ -72,6 +72,7 @@ jobs:
         if [[ -d build ]]; then
           cp build/libSyDEVS* artifacts/lib || true
         fi
+        mkdir -p $(dirname "SyDEVS-${{ github.ref_name }}.zip")
         # Create final archive
         zip -r SyDEVS-${{ github.ref_name }}.zip artifacts
 
