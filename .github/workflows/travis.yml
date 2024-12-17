@@ -83,14 +83,13 @@ jobs:
           zip -r SyDEVS-${{ github.ref_name }}_api-reference.zip doc/html
         fi
 
-    - name: Deploy to GitHub Releases
-      uses: actions/upload-release-asset@v1
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
       with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        release_id: ${{ steps.create_release.outputs.id }}
-        asset_path: SyDEVS-${{ github.ref_name }}.zip
-        asset_name: SyDEVS-${{ github.ref_name }}.zip
-        asset_content_type: application/zip
+        files: SyDEVS-${{ github.ref_name }}.zip SyDEVS-${{ github.ref_name }}_api-reference.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Deploy Documentation
       if: github.event_name == 'push' || github.ref == 'refs/tags/*'
