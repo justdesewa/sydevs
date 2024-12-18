@@ -74,9 +74,9 @@ jobs:
         if [[ -d build ]]; then
           cp build/libSyDEVS* artifacts/lib || true
         fi
-        mkdir -p $(dirname "SyDEVS-${{ github.ref_name }}.zip")
+        mkdir -p $(dirname "SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip")
         # Create final archive
-        zip -r SyDEVS-${{ github.ref_name }}.zip artifacts
+        zip -r SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip artifacts
 
     - name: Package Documentation
       if: github.event_name == 'push' || github.ref == 'refs/tags/*'
@@ -90,11 +90,11 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: SyDEVS-${{ github.ref_name }}.zip  # Updated to match the file generated
-        asset_name: SyDEVS_Release_${{ github.ref_name }}.zip
+        file: SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
+        asset_name: SyDEVS_Release_${{ github.ref_name }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
         tag: ${{ github.ref_name }}
-        overwrite: true
-        body: "Release for SyDEVS version ${{ github.ref_name }}"
+        overwrite: false  # Prevent overwriting if asset already exists
+        body: "Release for SyDEVS version ${{ github.ref_name }} using compiler ${{ matrix.cc }}"
 
     - name: Deploy Documentation
       if: github.event_name == 'push' || github.ref == 'refs/tags/*'
