@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        cc: [gcc-12, clang-14] # Supported compilers in Ubuntu repositories.
+        cc: [gcc-12, clang-14]  # Supported compilers in Ubuntu repositories.
 
     steps:
     - name: Checkout repository
@@ -85,8 +85,8 @@ jobs:
           zip -r SyDEVS-${{ github.ref_name }}_api-reference.zip doc/html
         fi
 
-    # Step 3: Create GitHub Release
-    - name: Create GitHub Release
+    # Step 3: Create GitHub Release for the Compiler
+    - name: Create GitHub Release (Compiler-specific)
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -96,6 +96,7 @@ jobs:
         overwrite: false  # Prevent overwriting if asset already exists
         body: "Release for SyDEVS version ${{ github.ref_name }} using compiler ${{ matrix.cc }}"
 
+    # Step 4: Deploy Documentation
     - name: Deploy Documentation
       if: github.event_name == 'push' || github.ref == 'refs/tags/*'
       run: bash scripts/deploy_docs.sh
