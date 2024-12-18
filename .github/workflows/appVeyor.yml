@@ -8,81 +8,76 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
-
-    env:
-      VS_VERSION: '2022'  # Visual Studio version
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
+    # Step 1: Checkout repository
     - name: Checkout Repository
-      uses: actions/checkout@v3  # Latest version
+      uses: actions/checkout@v3
 
-    # Install Visual Studio 2022 Build Tools for Windows
-    - name: Install Visual Studio Build Tools
+    # Step 2: Setup build tools based on OS
+    - name: Setup Build Tools
+      if: runner.os == 'Windows'
+      run: choco install visualstudio2022buildtools --yes
+      shell: powershell
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y build-essential cmake
+
+    # Step 3: Configure Build Environment
+    - name: Configure Build
+      run: cmake -S . -B build
+      shell: bash
+
+    # Step 4: Build Project
+    - name: Build Project
+      run: cmake --build build --config Release --parallel
+      shell: bash
+
+    # Step 5: Archive Artifacts
+    - name: Prepare Artifacts
       run: |
-        # Install Visual Studio 2022 Build Tools if not already installed
-        if (-Not (Test-Path "$env:ProgramFiles(x86)\Microsoft Visual Studio\2022\BuildTools")) {
-          Write-Host "Installing Visual Studio Build Tools 2022"
-          choco install visualstudio2022buildtools --yes
-        }
+        mkdir -p artifacts/lib artifacts/include/sydevs/{core,systems,time}
+        cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
+        cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
+        cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
+        cp build/lib*.so artifacts/lib || cp build/Release/SyDEVS.lib artifacts/lib || true
+        zip -r artifacts.zip artifacts
 
-    # Verify Visual Studio Installation
-    - name: Verify Visual Studio Installation
-      run: |
-        # Check if Visual Studio 2022 is installed using vswhere
-        vswhere -products * -requires Microsoft.Component.MSBuild -property installationPath
-
-    # Set up Visual Studio (Windows only)
-    - name: Set up Visual Studio
-      uses: microsoft/setup-msbuild@v1  # Latest MSBuild setup for Windows
-
-    # Create build directory
-    - name: Create build directory
-      run: mkdir build
-
-    # Update CMakeLists.txt to remove unused variable warning
-    - name: Update CMakeLists to remove unused variable warning
-      run: |
-        echo "Updating CMakeLists.txt to disable unused variable warning"
-        (Get-Content CMakeLists.txt) -replace 'set\(CMAKE_CXX_FLAGS', 'set(CMAKE_CXX_FLAGS -Wno-unused-but-set-variable' | Set-Content CMakeLists.txt
-        Get-Content CMakeLists.txt  # Optional: to verify the changes
-
-    # Archive Artifacts
-    - name: Archive Artifacts
-      run: |
-        # Create directories using PowerShell
-        New-Item -ItemType Directory -Path artifacts/lib -Force
-        New-Item -ItemType Directory -Path artifacts/include/sydevs/core -Force
-        New-Item -ItemType Directory -Path artifacts/include/sydevs/systems -Force
-        New-Item -ItemType Directory -Path artifacts/include/sydevs/time -Force
-
-        # Copy header files if directories exist
-        if (Test-Path src/sydevs/core) {
-          Copy-Item src/sydevs/core/*.h -Destination artifacts/include/sydevs/core -Force
-        }
-        if (Test-Path src/sydevs/systems) {
-          Copy-Item src/sydevs/systems/*.h -Destination artifacts/include/sydevs/systems -Force
-        }
-        if (Test-Path src/sydevs/time) {
-          Copy-Item src/sydevs/time/*.h -Destination artifacts/include/sydevs/time -Force
-        }
-
-        # Compress artifacts into a zip file
-        Compress-Archive -Path artifacts/* -DestinationPath artifacts.zip
-
-    # Upload Artifacts
+    # Step 6: Upload Artifacts (for debugging purposes)
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3  # Latest version for uploading artifacts
+      uses: actions/upload-artifact@v3
       with:
-        name: artifact  # The name of the artifact
-        path: artifacts.zip  # Path to the archived artifacts.zip
+        name: build-artifacts
+        path: artifacts.zip
 
-    # Deploy to Release
-    - name: Deploy to Release
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        TAG_NAME=${GITHUB_REF#refs/tags/}
-        echo "Deploying Release $TAG_NAME"
-        gh release create "$TAG_NAME" artifacts.zip --title "Release $TAG_NAME" --notes "Release for version $TAG_NAME"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    # Step 1: Checkout Repository
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # Step 2: Download Build Artifacts
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts
+        path: .
+
+    # Step 3: Create GitHub Release
+    - name: Create GitHub Release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: artifacts.zip
+        asset_name: SyDEVS_Release_${{ github.ref_name }}.zip
+        tag: ${{ github.ref_name }}
+        overwrite: true
+        body: "Release for SyDEVS version ${{ github.ref_name }}"
