@@ -37,18 +37,18 @@ jobs:
       run: cmake --build build --config Release --parallel
       shell: bash
 
-    
+    # Step 5: Prepare Artifacts
     - name: Prepare Artifacts
       run: |
-        if ($env:RUNNER_OS -eq 'Linux') {
-          # Linux-specific commands
-          mkdir -p artifacts/lib artifacts/include/sydevs/{core,systems,time}
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          # Linux-specific commands (Bash)
+          mkdir -p artifacts/lib artifacts/include/sydevs/core artifacts/include/sydevs/systems artifacts/include/sydevs/time
           cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
           cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
           cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
           cp build/lib*.so artifacts/lib || cp build/Release/SyDEVS.lib artifacts/lib || true
           zip -r artifacts.zip artifacts
-        } elseif ($env:RUNNER_OS -eq 'Windows') {
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
           # Windows-specific commands (PowerShell)
           New-Item -ItemType Directory -Force -Path artifacts\lib, artifacts\include\sydevs\core, artifacts\include\sydevs\systems, artifacts\include\sydevs\time
           cp src\sydevs\core\*.h artifacts\include\sydevs\core || true
@@ -56,8 +56,8 @@ jobs:
           cp src\sydevs\time\*.h artifacts\include\sydevs\time || true
           cp build\lib*.so artifacts\lib || cp build\Release\SyDEVS.lib artifacts\lib || true
           Compress-Archive -Path artifacts\* -DestinationPath artifacts.zip
-        }
-      shell: pwsh
+        fi
+      shell: bash
 
     # Step 6: Upload Artifacts for Debugging
     - name: Upload Artifacts
