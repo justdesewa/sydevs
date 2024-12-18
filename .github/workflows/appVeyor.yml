@@ -6,7 +6,8 @@ on:
   pull_request:
     branches:
       - Rasheedat/ci
-
+  workflow_dispatch:
+ 
 jobs:
   build:
     strategy:
