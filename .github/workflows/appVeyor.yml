@@ -50,12 +50,15 @@ jobs:
           zip -r artifacts.zip artifacts
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           # Windows-specific commands (PowerShell)
-          New-Item -ItemType Directory -Force -Path artifacts\lib, artifacts\include\sydevs\core, artifacts\include\sydevs\systems, artifacts\include\sydevs\time
-          cp src\sydevs\core\*.h artifacts\include\sydevs\core || true
-          cp src\sydevs\systems\*.h artifacts\include\sydevs\systems || true
-          cp src\sydevs\time\*.h artifacts\include\sydevs\time || true
-          cp build\lib*.so artifacts\lib || cp build\Release\SyDEVS.lib artifacts\lib || true
-          Compress-Archive -Path artifacts\* -DestinationPath artifacts.zip
+          pwsh -Command "
+            New-Item -ItemType Directory -Force -Path artifacts\\lib, artifacts\\include\\sydevs\\core, artifacts\\include\\sydevs\\systems, artifacts\\include\\sydevs\\time;
+            Copy-Item -Path src\\sydevs\\core\\*.h -Destination artifacts\\include\\sydevs\\core -Force;
+            Copy-Item -Path src\\sydevs\\systems\\*.h -Destination artifacts\\include\\sydevs\\systems -Force;
+            Copy-Item -Path src\\sydevs\\time\\*.h -Destination artifacts\\include\\sydevs\\time -Force;
+            Copy-Item -Path build\\lib*.so -Destination artifacts\\lib -Force;
+            Copy-Item -Path build\\Release\\SyDEVS.lib -Destination artifacts\\lib -Force;
+            Compress-Archive -Path artifacts\\* -DestinationPath artifacts.zip
+          "
         fi
       shell: bash
 
