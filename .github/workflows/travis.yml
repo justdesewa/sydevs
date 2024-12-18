@@ -3,10 +3,10 @@ name: Build and Deploy
 on:
   push:
     tags:
-      - 'v*'  # Matches tags like v1.0.0, v2.0.0, etc.
+      - 'v*'  # Ensure only tags trigger this workflow
   pull_request:
     branches:
-      - Rasheedat/ci
+      - main
   workflow_dispatch:
 
 jobs:
@@ -92,7 +92,7 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
         asset_name: SyDEVS_Release_${{ github.ref_name }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
-        tag: ${{ github.ref_name }}
+        tag: ${{ github.ref_name }}  # Tag name as version
         overwrite: false  # Prevent overwriting if asset already exists
         body: "Release for SyDEVS version ${{ github.ref_name }} using compiler ${{ matrix.cc }}"
 
