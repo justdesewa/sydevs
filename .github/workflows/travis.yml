@@ -2,8 +2,8 @@ name: Build and Deploy
 
 on:
   push:
-    tags: 
-      - 'v*'
+    tags:
+      - 'v*'  # Matches tags like v1.0.0, v2.0.0, etc.
   pull_request:
     branches:
       - main
@@ -85,17 +85,16 @@ jobs:
           zip -r SyDEVS-${{ github.ref_name }}_api-reference.zip doc/html
         fi
 
-    # Step 3: Create GitHub Release.
+    # Step 3: Create GitHub Release
     - name: Create GitHub Release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: artifacts.zip
+        file: SyDEVS-${{ github.ref_name }}.zip  # Updated to match the file generated
         asset_name: SyDEVS_Release_${{ github.ref_name }}.zip
         tag: ${{ github.ref_name }}
         overwrite: true
         body: "Release for SyDEVS version ${{ github.ref_name }}"
-
 
     - name: Deploy Documentation
       if: github.event_name == 'push' || github.ref == 'refs/tags/*'
