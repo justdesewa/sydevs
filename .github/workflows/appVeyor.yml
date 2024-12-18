@@ -37,28 +37,28 @@ jobs:
       run: cmake --build build --config Release --parallel
       shell: bash
 
+    
     # Step 5: Prepare Artifacts
-    # Step 5: Prepare Artifacts
-- name: Prepare Artifacts
-  run: |
-    # For Linux (Ubuntu)
-    if [ $RUNNER_OS == 'Linux' ]; then
-      mkdir -p artifacts/lib artifacts/include/sydevs/{core,systems,time}
-      cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
-      cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
-      cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
-      cp build/lib*.so artifacts/lib || cp build/Release/SyDEVS.lib artifacts/lib || true
-      zip -r artifacts.zip artifacts
-    # For Windows
-    elif [ $RUNNER_OS == 'Windows' ]; then
-      New-Item -ItemType Directory -Force -Path artifacts\lib, artifacts\include\sydevs\core, artifacts\include\sydevs\systems, artifacts\include\sydevs\time
-      cp src\sydevs\core\*.h artifacts\include\sydevs\core || true
-      cp src\sydevs\systems\*.h artifacts\include\sydevs\systems || true
-      cp src\sydevs\time\*.h artifacts\include\sydevs\time || true
-      cp build\lib*.so artifacts\lib || cp build\Release\SyDEVS.lib artifacts\lib || true
-      Compress-Archive -Path artifacts\* -DestinationPath artifacts.zip
-    fi
-
+    - name: Prepare Artifacts
+      run: |
+        # For Linux (Ubuntu)
+        if [ $RUNNER_OS == 'Linux' ]; then
+          mkdir -p artifacts/lib artifacts/include/sydevs/{core,systems,time}
+          cp src/sydevs/core/*.h artifacts/include/sydevs/core || true
+          cp src/sydevs/systems/*.h artifacts/include/sydevs/systems || true
+          cp src/sydevs/time/*.h artifacts/include/sydevs/time || true
+          cp build/lib*.so artifacts/lib || cp build/Release/SyDEVS.lib artifacts/lib || true
+          zip -r artifacts.zip artifacts
+        # For Windows
+        elif [ $RUNNER_OS == 'Windows' ]; then
+          New-Item -ItemType Directory -Force -Path artifacts\lib, artifacts\include\sydevs\core, artifacts\include\sydevs\systems, artifacts\include\sydevs\time
+          cp src\sydevs\core\*.h artifacts\include\sydevs\core || true
+          cp src\sydevs\systems\*.h artifacts\include\sydevs\systems || true
+          cp src\sydevs\time\*.h artifacts\include\sydevs\time || true
+          cp build\lib*.so artifacts\lib || cp build\Release\SyDEVS.lib artifacts\lib || true
+          Compress-Archive -Path artifacts\* -DestinationPath artifacts.zip
+        fi
+    
 
     # Step 6: Upload Artifacts for Debugging
     - name: Upload Artifacts
