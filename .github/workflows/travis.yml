@@ -84,13 +84,16 @@ jobs:
           zip -r SyDEVS-${{ github.ref_name }}_api-reference.zip doc/html
         fi
 
+    # Step 3: Create GitHub Release
     - name: Create GitHub Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
+      uses: svenstaro/upload-release-action@v2
       with:
-        files: SyDEVS-${{ github.ref_name }}.zip SyDEVS-${{ github.ref_name }}_api-reference.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: artifacts.zip
+        asset_name: SyDEVS_Release_${{ github.ref_name }}.zip
+        tag: ${{ github.ref_name }}
+        overwrite: true
+        body: "Release for SyDEVS version ${{ github.ref_name }}"
 
 
     - name: Deploy Documentation
