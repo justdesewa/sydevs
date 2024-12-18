@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     tags:
-      - 'v*'  # Ensure only tags trigger this workflow
+      - 'v2*'  # Ensure only tags trigger this workflow
   pull_request:
     branches:
       - Rasheedat/ci
