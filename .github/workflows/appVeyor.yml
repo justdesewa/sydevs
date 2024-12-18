@@ -51,34 +51,34 @@ jobs:
     # Create build directory (Cross-platform)
     - name: Create directories
       run: |
-        if ($env:RUNNER_OS -eq 'Linux') {
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
           mkdir -p artifacts/lib artifacts/include/sydevs/{core,systems,time}
-        } elseif ($env:RUNNER_OS -eq 'Windows') {
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
           mkdir -Force artifacts/lib
           mkdir -Force artifacts/include/sydevs/core
           mkdir -Force artifacts/include/sydevs/systems
           mkdir -Force artifacts/include/sydevs/time
-        }
+        fi
 
     # Build the project
     - name: Build project
       run: |
-        if ($env:RUNNER_OS -eq 'Linux') {
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
           cmake -G "Unix Makefiles" .
           make
-        } elseif ($env:RUNNER_OS -eq 'Windows') {
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
           cmake -G "Visual Studio 2022" .
           msbuild SyDEVS.sln /p:Configuration=Release
-        }
+        fi
 
     # Archive Artifacts
     - name: Archive Artifacts
       run: |
-        if ($env:RUNNER_OS -eq 'Linux') {
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
           tar -czvf artifacts.tar.gz artifacts
-        } elseif ($env:RUNNER_OS -eq 'Windows') {
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
           Compress-Archive -Path artifacts/* -DestinationPath artifacts.zip
-        }
+        fi
 
     # Upload Artifacts
     - name: Upload Artifacts
