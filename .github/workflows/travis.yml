@@ -84,7 +84,7 @@ jobs:
           zip -r SyDEVS-${{ github.ref_name }}_api-reference.zip doc/html
         fi
 
-    # Step 3: Create GitHub Release
+    # Step 3: Create GitHub Release.
     - name: Create GitHub Release
       uses: svenstaro/upload-release-action@v2
       with:
