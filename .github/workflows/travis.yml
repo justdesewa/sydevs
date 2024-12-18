@@ -74,15 +74,15 @@ jobs:
         if [[ -d build ]]; then
           cp build/libSyDEVS* artifacts/lib || true
         fi
-        mkdir -p $(dirname "SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip")
+        mkdir -p $(dirname "SyDEVS-${{ github.ref }}-${{ matrix.cc }}.zip")
         # Create final archive
-        zip -r SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip artifacts
+        zip -r SyDEVS-${{ github.ref }}-${{ matrix.cc }}.zip artifacts
 
     - name: Package Documentation
       if: github.event_name == 'push' || github.ref == 'refs/tags/*'
       run: |
         if [ -d doc/html ]; then
-          zip -r SyDEVS-${{ github.ref_name }}_api-reference.zip doc/html
+          zip -r SyDEVS-${{ github.ref }}_api-reference.zip doc/html
         fi
 
     # Step 3: Create GitHub Release for the Compiler
@@ -90,11 +90,11 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: SyDEVS-${{ github.ref_name }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
-        asset_name: SyDEVS_Release_${{ github.ref_name }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
-        tag: ${{ github.ref_name }}  # Tag name as version
+        file: SyDEVS-${{ github.ref }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
+        asset_name: SyDEVS_Release_${{ github.ref }}-${{ matrix.cc }}.zip  # Unique filename with version and compiler
+        tag: ${{ github.ref }}  # Use tag name as version
         overwrite: false  # Prevent overwriting if asset already exists
-        body: "Release for SyDEVS version ${{ github.ref_name }} using compiler ${{ matrix.cc }}"
+        body: "Release for SyDEVS version ${{ github.ref }} using compiler ${{ matrix.cc }}"
 
     # Step 4: Deploy Documentation
     - name: Deploy Documentation
