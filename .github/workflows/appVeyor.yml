@@ -5,7 +5,7 @@ on:
     tags: v1.0.0
   pull_request:
     branches:
-      - main
+      - Rasheedat/ci
 
 jobs:
   build:
@@ -85,7 +85,7 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build-artifacts
-        path: .
+        path: ./
 
     # Step 3: Create GitHub Release
     - name: Create GitHub Release
@@ -93,7 +93,9 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: artifacts.zip
-        asset_name: SyDEVS_Release_${{ github.ref_name }}.zip
+        # Append the timestamp to avoid filename conflict
+        asset_name: SyDEVS_Release_${{ github.ref_name }}-${{ github.run_id }}.zip
         tag: ${{ github.ref_name }}
-        overwrite: true
+        overwrite: false  # Avoid overwriting previous assets
         body: "Release for SyDEVS version ${{ github.ref_name }}"
+
