@@ -2,7 +2,8 @@ name: Build and Deploy SyDEVS
 
 on:
   push:
-    tags: v1.0.0
+    tags: 
+      - 'v*'
   pull_request:
     branches:
       - Rasheedat/ci
