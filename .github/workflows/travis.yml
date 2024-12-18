@@ -2,6 +2,7 @@ name: Build and Deploy
 
 on:
   push:
+    tags: v1.0.0
   pull_request:
     branches:
       - main
